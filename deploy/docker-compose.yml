@@ -1,0 +1,21 @@
+x-notify-worker-env: &notify-worker-env
+  MYSQL_USER: ${MYSQL_USER}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+  MYSQL_HOST: ${MYSQL_HOST}
+  MYSQL_PORT: ${MYSQL_PORT}
+  REDIS_URL: redis://${REDIS_USER}:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
+  JUDGE_ID: ${JUDGE_ID}
+  # Notification
+  EJUDGE_NOTIFY_GROUP: rmatics
+  EJUDGE_NOTIFY_STREAM: ejudge.notify
+  # rmatics
+  RMATICS_ALIVE_URL: ${RMATICS_ALIVE_URL}
+
+services:
+  notify-worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: notify:local
+    environment: *notify-worker-env
+    command: python /code/notify_worker/notify_workers.py --workers 1
