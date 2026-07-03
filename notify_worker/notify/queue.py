@@ -44,6 +44,7 @@ def handle_run_message(judge_id: int, run_data: dict):
     result['score'] = run_data.get('raw_score')
     result['test_num'] = run_data.get('raw_test')
     result['lang_id'] = run_data.get('lang_id')
+    result['status'] = run_data.get('status')
     result['rmatics_run_id'] = _rmatics_run_id(run_data)
     result['judge_id'] = judge_id
 
