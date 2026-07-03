@@ -1,3 +1,5 @@
+import click
+
 from gevent import monkey
 
 monkey.patch_all()
@@ -9,11 +11,14 @@ from notify_worker.notify.worker import NotifyWorker
 from notify_worker import configure_app
 from notify_worker.config import CONFIG_DICT
 
-def main():
+@click.command()
+@click.option('--workers', default=2, help='Число потоков.', type=int)
+def main(workers):
     print(CONFIG_DICT)
     configure_app(config=CONFIG_DICT, config_logger=False)
     worker_group = Group()
-    worker_group.start(NotifyWorker(1))
+    for i in range(1, workers + 1):
+        worker_group.start(NotifyWorker(i))
     worker_group.join()
 
 

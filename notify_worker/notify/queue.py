@@ -3,7 +3,6 @@ import logging
 import requests
 import datetime
 import pickle
-import mysql.connector
 
 from notify_worker.config import CONFIG_DICT
 from notify_worker.utils.queue import RedisStreamsQueue
@@ -24,9 +23,6 @@ def _to_int(value, default=None):
     except (TypeError, ValueError):
         return default
 
-def _is_terminal(status: Optional[int]) -> bool:
-    return status is not None and status not in NON_TERMINAL_STATUSES
-
 def _rmatics_run_id(run_data: dict) -> Optional[int]:
     if run_data.get('ext_user_kind') != 'u64':
         return None
@@ -41,18 +37,13 @@ def handle_run_message(judge_id: int, run_data: dict):
         )
         return
 
-    connection = mysql.connector.connect(**CONFIG_DICT["MYSQL_CONFIG"])
-    cursor = connection.cursor(dictionary=True)
-
-    query = "SELECT run_id, run_uuid, contest_id, score, status, lang_id, test_num, create_time, last_change_time FROM ejudge.runs WHERE run_uuid = %s;"
-    cursor.execute(query, (ej_run_uuid,))
-    result = cursor.fetchone()
-    cursor.close()
-
-    # Надо отдельно обработать даты
-    result['create_time'] = result['create_time'].isoformat()
-    result['last_change_time'] = result['last_change_time'].isoformat()
-
+    result = {}
+    result['run_id'] = run_data.get('run_id')
+    result['run_uuid'] = run_data.get('run_uuid')
+    result['contest_id'] = run_data.get('contest_id')
+    result['score'] = run_data.get('raw_score')
+    result['test_num'] = run_data.get('raw_test')
+    result['lang_id'] = run_data.get('lang_id')
     result['rmatics_run_id'] = _rmatics_run_id(run_data)
     result['judge_id'] = judge_id
 
