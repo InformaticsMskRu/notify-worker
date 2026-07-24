@@ -51,6 +51,9 @@ def handle_run_message(judge_id: int, run_data: dict):
     r = requests.post(
         CONFIG_DICT['RMATICS_ALIVE_URL'], json=result, timeout=REQUEST_TIMEOUT
     )
+
+    logging.info(f'informatics response: {r}')
+
     r.raise_for_status()
 
 
@@ -62,12 +65,14 @@ def process_message(judge_id: int, raw: str):
         logging.warning(f'notify: cannot decode message {raw!r}')
         return
 
+    logging.info(f'received message {message}')
+
     msg_type = message.get('type')
 
     if msg_type == 'run':
         handle_run_message(judge_id, message.get('run') or {})
     else:
-        logging.debug(f'notify: skip message type {msg_type!r}')
+        logging.info(f'notify: skip message type {msg_type!r}')
 
 class NotifyQueue(RedisStreamsQueue):
     
@@ -85,6 +90,7 @@ class NotifyQueue(RedisStreamsQueue):
 
                 if isinstance(data, bytes):
                     data = data.decode('utf-8', 'replace')
+
 
                 try:
                     if data is not None:

@@ -1,1 +1,4 @@
 deploy/.env
+deploy/.env.old
+deploy/.envyy
+*/__pycache__

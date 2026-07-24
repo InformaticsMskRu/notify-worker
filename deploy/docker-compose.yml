@@ -17,5 +17,6 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     image: notify:local
+    network_mode: host
     environment: *notify-worker-env
-    command: python /code/notify_worker/notify_workers.py --workers 1
+    command: python /code/notify_worker/notify_workers.py --workers 1 

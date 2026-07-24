@@ -21,7 +21,7 @@ def init_logger():
         }},
         'handlers': {'stdout': {
             'class': 'logging.StreamHandler',
-            'stream': 'ext://flask.logging.wsgi_errors_stream',
+            'stream': 'ext://sys.stderr',
             'formatter': 'default'
         }},
         'root': {
