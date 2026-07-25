@@ -5,6 +5,7 @@ x-notify-worker-env: &notify-worker-env
   MYSQL_PORT: ${MYSQL_PORT}
   REDIS_URL: redis://${REDIS_USER}:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
   JUDGE_ID: ${JUDGE_ID}
+  EJUDGE_API_TOKEN: ${EJUDGE_API_TOKEN}
   # Notification
   EJUDGE_NOTIFY_GROUP: rmatics
   EJUDGE_NOTIFY_STREAM: ejudge.notify

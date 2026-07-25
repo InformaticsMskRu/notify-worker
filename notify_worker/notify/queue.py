@@ -48,8 +48,14 @@ def handle_run_message(judge_id: int, run_data: dict):
     result['rmatics_run_id'] = _rmatics_run_id(run_data)
     result['judge_id'] = judge_id
 
+    token = CONFIG_DICT['EJUDGE_API_TOKEN']
+    if not token:
+        logging.error('EJUDGE_API_TOKEN is not configured')
+    headers = {'Authorization': f'Bearer {token}'}
+
     r = requests.post(
-        CONFIG_DICT['RMATICS_ALIVE_URL'], json=result, timeout=REQUEST_TIMEOUT
+        CONFIG_DICT['RMATICS_ALIVE_URL'], json=result,
+        headers=headers, timeout=REQUEST_TIMEOUT
     )
 
     logging.info(f'informatics response: {r}')
