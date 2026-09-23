@@ -87,7 +87,7 @@ class NotifyQueue(RedisStreamsQueue):
 
     def get_and_process(self):
         resp = super(NotifyQueue, self).get_blocking()
-        logging.info('ejudge notification')
+        logging.debug('ejudge notification')
         if not resp:
             return
         for _, messages in resp:
