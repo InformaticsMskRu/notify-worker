@@ -12,6 +12,7 @@ from notify_worker.notify.queue import (
 
 RMATICS_URL = 'http://rmatics/problem/run/action/update_from_ejudge'
 JUDGE_ID = 1
+EJUDGE_API_TOKEN = 'judge-1-token'
 
 
 class TestToInt(unittest.TestCase):
@@ -42,10 +43,13 @@ class TestHandleRunMessage(unittest.TestCase):
     def setUp(self):
         # CONFIG_DICT — живое отображение Config.__dict__
         self._old_url = getattr(Config, 'RMATICS_ALIVE_URL', None)
+        self._old_token = getattr(Config, 'EJUDGE_API_TOKEN', None)
         Config.RMATICS_ALIVE_URL = RMATICS_URL
+        Config.EJUDGE_API_TOKEN = EJUDGE_API_TOKEN
 
     def tearDown(self):
         Config.RMATICS_ALIVE_URL = self._old_url
+        Config.EJUDGE_API_TOKEN = self._old_token
 
     def run_data(self, **kwargs):
         data = {
@@ -81,6 +85,8 @@ class TestHandleRunMessage(unittest.TestCase):
         self.assertEqual(sent['test_num'], 5)     # raw_test -> test_num
         self.assertEqual(sent['rmatics_run_id'], 42)
         self.assertEqual(sent['judge_id'], JUDGE_ID)
+        self.assertEqual(kwargs['headers']['Authorization'],
+                         f'Bearer {EJUDGE_API_TOKEN}')
 
     @patch('notify_worker.notify.queue.requests.post')
     def test_message_without_uuid_is_skipped(self, mock_post):
