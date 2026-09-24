@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 from unittest.mock import patch, Mock
 
@@ -6,6 +7,8 @@ from notify_worker.config import Config
 from notify_worker.notify.queue import (
     _rmatics_run_id,
     _to_int,
+    check_client_cert,
+    client_cert,
     handle_run_message,
     process_message,
 )
@@ -13,6 +16,7 @@ from notify_worker.notify.queue import (
 RMATICS_URL = 'http://rmatics/problem/run/action/update_from_ejudge'
 JUDGE_ID = 1
 EJUDGE_API_TOKEN = 'judge-1-token'
+FIXTURES = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 class TestToInt(unittest.TestCase):
@@ -128,3 +132,64 @@ class TestProcessMessage(unittest.TestCase):
     def test_invalid_json_does_not_crash(self, mock_handle):
         process_message(JUDGE_ID, 'not-a-json{')
         mock_handle.assert_not_called()
+
+
+class TestClientCert(unittest.TestCase):
+    def setUp(self):
+        self._old = (Config.RMATICS_CLIENT_CERT, Config.RMATICS_CLIENT_KEY)
+
+    def tearDown(self):
+        Config.RMATICS_CLIENT_CERT, Config.RMATICS_CLIENT_KEY = self._old
+
+    def configure(self, cert=None, key=None):
+        Config.RMATICS_CLIENT_CERT = cert and os.path.join(FIXTURES, cert)
+        Config.RMATICS_CLIENT_KEY = key and os.path.join(FIXTURES, key)
+
+    def test_not_configured(self):
+        self.configure()
+        self.assertIsNone(client_cert())
+        check_client_cert()
+
+    def test_cert_and_key(self):
+        self.configure('client.pem', 'client.key')
+        self.assertEqual(client_cert(), (Config.RMATICS_CLIENT_CERT,
+                                         Config.RMATICS_CLIENT_KEY))
+        check_client_cert()
+
+    def test_combined_pem(self):
+        self.configure('combined.pem')
+        self.assertEqual(client_cert(), Config.RMATICS_CLIENT_CERT)
+        check_client_cert()
+
+    def test_key_without_cert(self):
+        self.configure(key='client.key')
+        with self.assertRaises(RuntimeError):
+            check_client_cert()
+
+    def test_missing_file(self):
+        self.configure('missing.pem', 'client.key')
+        with self.assertRaises(RuntimeError):
+            check_client_cert()
+
+    def test_key_does_not_match_cert(self):
+        self.configure('client.pem', 'other.key')
+        with self.assertRaises(RuntimeError):
+            check_client_cert()
+
+    def test_encrypted_key(self):
+        self.configure('client.pem', 'encrypted.key')
+        with self.assertRaises(RuntimeError):
+            check_client_cert()
+
+    @patch('notify_worker.notify.queue.requests.post')
+    def test_cert_is_sent(self, mock_post):
+        self.configure('client.pem', 'client.key')
+        mock_post.return_value = Mock(status_code=200)
+        Config.RMATICS_ALIVE_URL, old_url = RMATICS_URL, Config.RMATICS_ALIVE_URL
+        try:
+            handle_run_message(JUDGE_ID, {'run_uuid': 'u'})
+        finally:
+            Config.RMATICS_ALIVE_URL = old_url
+
+        self.assertEqual(mock_post.call_args[1]['cert'],
+                         (Config.RMATICS_CLIENT_CERT, Config.RMATICS_CLIENT_KEY))

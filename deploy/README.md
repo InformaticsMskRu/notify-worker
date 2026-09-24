@@ -69,6 +69,7 @@ Fill it in:
 | `JUDGE_ID` | yes | Numeric id of this ejudge instance in rmatics' `judges.json`. |
 | `EJUDGE_API_TOKEN` | yes | This judge's ejudge API token, the same one as in `judges.json` for `JUDGE_ID`. |
 | `RMATICS_ALIVE_URL` | yes | `https://informatics.msk.ru/py/problem/run/action/update_from_ejudge_v2` (see below). |
+| `RMATICS_CLIENT_CERT`, `RMATICS_CLIENT_KEY` | no | Client certificate for mTLS, as paths inside the container (`/certs/...`). See "Client certificate" below. |
 | `LOG_LEVEL` | no | Default `INFO`. |
 
 `.env` is ignored by git and excluded from the Docker image, so the secrets
@@ -79,6 +80,55 @@ stay on this node.
 rmatics' `update_from_ejudge_v2`. Until that proxy is deployed, use the
 internal rmatics address instead, if this node can reach it:
 `http://<rmatics-host>:12345/problem/run/action/update_from_ejudge_v2`.
+
+### Client certificate (optional)
+
+If Cloudflare challenges the worker's requests (the response is an HTML page
+titled "Just a moment..."), let them through with a client certificate
+instead of an IP allowlist:
+
+1. In Cloudflare, **SSL/TLS → Client Certificates → Create Certificate**
+   (Cloudflare-managed CA, PEM format). Save the certificate as
+   `client.pem` and the private key as `client.key`. The key is shown only
+   once.
+2. On the same page, under **Hosts**, add `informatics.msk.ru`. This lets
+   clients present certificates to that hostname; it doesn't block anyone by
+   itself.
+3. **Security → WAF → Custom rules**: add a rule with the action **Skip**
+   (all remaining custom rules, Security Level, Super Bot Fight Mode), placed
+   first:
+
+   ```
+   (http.request.uri.path eq "/py/problem/run/action/update_from_ejudge_v2" and cf.tls_client_auth.cert_verified)
+   ```
+
+   Bot Fight Mode can't be skipped by rules; if it's on, it still challenges.
+
+On the node, put the files into `deploy/certs/` (ignored by git and not copied
+into the image) and give the container user (uid `10001`) read access to the
+key:
+
+```bash
+mkdir -p certs
+cp /path/to/client.pem /path/to/client.key certs/
+sudo chown 10001 certs/client.key
+sudo chmod 600 certs/client.key
+```
+
+Then set, in `.env`:
+
+```
+RMATICS_CLIENT_CERT=/certs/client.pem
+RMATICS_CLIENT_KEY=/certs/client.key
+```
+
+A single PEM with both the certificate and the key also works: set only
+`RMATICS_CLIENT_CERT`. The key must not be password-protected.
+
+The worker checks the pair at startup and logs
+`Using client certificate /certs/client.pem`. A wrong path, a key that
+doesn't match the certificate, or an encrypted key stops it with
+`Cannot load client certificate ...`.
 
 ## 4. Build the image
 
@@ -166,6 +216,7 @@ status code in the traceback tells why:
 | `404` | Wrong `RMATICS_ALIVE_URL`, or the pynformatics proxy isn't deployed yet. |
 | `502` | The pynformatics proxy can't reach rmatics. |
 | timeout / connection error | `RMATICS_ALIVE_URL` host unreachable from this node (step 5). |
+| `403` with an HTML page "Just a moment..." | Cloudflare challenged the request: set up the client certificate (step 3), or check the WAF rule. |
 
 ## Updating
 
