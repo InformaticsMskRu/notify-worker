@@ -3,3 +3,4 @@ deploy/.env.old
 deploy/.envyy
 __pycache__/
 *.pyc
+deploy/certs/

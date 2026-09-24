@@ -8,6 +8,8 @@ x-notify-worker-env: &notify-worker-env
   EJUDGE_NOTIFY_STREAM: ejudge.notify
   # rmatics
   RMATICS_ALIVE_URL: ${RMATICS_ALIVE_URL}
+  RMATICS_CLIENT_CERT: ${RMATICS_CLIENT_CERT:-}
+  RMATICS_CLIENT_KEY: ${RMATICS_CLIENT_KEY:-}
 
 services:
   notify-worker:
@@ -18,3 +20,5 @@ services:
     network_mode: host
     restart: unless-stopped
     environment: *notify-worker-env
+    volumes:
+      - ./certs:/certs:ro

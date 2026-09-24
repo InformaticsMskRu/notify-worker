@@ -3,6 +3,7 @@ import logging
 import requests
 import datetime
 import pickle
+import ssl
 
 from notify_worker.config import CONFIG_DICT
 from notify_worker.utils.queue import RedisStreamsQueue
@@ -27,6 +28,34 @@ def _rmatics_run_id(run_data: dict) -> Optional[int]:
     if run_data.get('ext_user_kind') != 'u64':
         return None
     return _to_int(run_data.get('ext_user'))
+
+def client_cert():
+    """`cert` argument for requests: None, a combined PEM, or (cert, key)."""
+    cert = CONFIG_DICT['RMATICS_CLIENT_CERT']
+    key = CONFIG_DICT['RMATICS_CLIENT_KEY']
+    if not cert:
+        return None
+    return (cert, key) if key else cert
+
+
+def check_client_cert():
+    """Fail at startup instead of on every notification."""
+    cert = CONFIG_DICT['RMATICS_CLIENT_CERT']
+    key = CONFIG_DICT['RMATICS_CLIENT_KEY']
+    if key and not cert:
+        raise RuntimeError('RMATICS_CLIENT_KEY is set without RMATICS_CLIENT_CERT')
+    if not cert:
+        return
+    try:
+        # requests can't use an encrypted key; the empty password makes
+        # load_cert_chain fail on one instead of prompting on the tty.
+        ssl.create_default_context().load_cert_chain(cert, key, password=lambda: b'')
+    except (OSError, ssl.SSLError) as e:
+        raise RuntimeError(
+            f'Cannot load client certificate {cert!r} / key {key!r}: {e}'
+        ) from e
+    logging.info(f'Using client certificate {cert}')
+
 
 def handle_run_message(judge_id: int, run_data: dict):
     ej_run_uuid = run_data.get('run_uuid')
@@ -55,7 +84,7 @@ def handle_run_message(judge_id: int, run_data: dict):
 
     r = requests.post(
         CONFIG_DICT['RMATICS_ALIVE_URL'], json=result,
-        headers=headers, timeout=REQUEST_TIMEOUT
+        headers=headers, cert=client_cert(), timeout=REQUEST_TIMEOUT
     )
 
     logging.info(f'informatics response: {r}')

@@ -8,6 +8,10 @@ class Config:
     # Токен ejudge api этого judge; под ним же ходим в rmatics
     EJUDGE_API_TOKEN = os.getenv('EJUDGE_API_TOKEN')
     RMATICS_ALIVE_URL = os.getenv('RMATICS_ALIVE_URL')
+    # Optional client certificate (mTLS) for RMATICS_ALIVE_URL: PEM files.
+    # The key may be omitted when RMATICS_CLIENT_CERT contains both.
+    RMATICS_CLIENT_CERT = os.getenv('RMATICS_CLIENT_CERT') or None
+    RMATICS_CLIENT_KEY = os.getenv('RMATICS_CLIENT_KEY') or None
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 CONFIG_DICT = vars(Config)
